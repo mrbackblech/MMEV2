@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Loader2 } from 'lucide-react';
+import { createLead } from '../services/projectService';
 
 interface ContactProps {
   initialMessage?: string;
 }
 
 export const Contact: React.FC<ContactProps> = ({ initialMessage = '' }) => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [message, setMessage] = useState(initialMessage);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (initialMessage) {
@@ -14,20 +19,35 @@ export const Contact: React.FC<ContactProps> = ({ initialMessage = '' }) => {
     }
   }, [initialMessage]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    alert("Vielen Dank für Ihre Nachricht. Wir werden den Dialog in Kürze aufnehmen.");
+    setIsSubmitting(true);
+
+    try {
+      await createLead({ name, email, message: `${message}${phone ? `\n\nTelefon: ${phone}` : ''}` });
+      alert("Vielen Dank! Wir haben Ihre Nachricht erhalten und in unserem System erfasst.");
+      // Formular zurücksetzen
+      setName('');
+      setEmail('');
+      setPhone('');
+      setMessage('');
+    } catch (error) {
+      console.error("Submit Error:", error);
+      alert("Es gab ein Problem beim Senden Ihrer Nachricht. Bitte versuchen Sie es später erneut.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="container mx-auto px-6 py-12 lg:py-20">
       <div className="w-full">
-        {/* Section Label - Bündig mit dem Logo-Rand */}
+        {/* Section Label */}
         <span className="text-gold-500 text-[8px] uppercase tracking-[0.5em] font-bold mb-6 block">
           KONTAKT
         </span>
 
-        {/* Main Headline - Bündig links */}
+        {/* Main Headline */}
         <h2 className="text-4xl md:text-6xl lg:text-7xl font-serif text-white leading-[1.1] mb-16 lg:mb-24 max-w-2xl">
           Starten wir den <br />
           <span className="italic text-gold-500">Dialog.</span>
@@ -35,7 +55,7 @@ export const Contact: React.FC<ContactProps> = ({ initialMessage = '' }) => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 items-start gap-y-16">
           
-          {/* Form Side - Nimmt die linke Seite ein, bündig mit Headline/Logo */}
+          {/* Form Side */}
           <div className="lg:col-span-6">
             <form className="space-y-8" onSubmit={handleSubmit}>
               <div className="space-y-2">
@@ -44,6 +64,8 @@ export const Contact: React.FC<ContactProps> = ({ initialMessage = '' }) => {
                   type="text" 
                   id="name" 
                   required
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
                   autoComplete="name"
                   className="w-full bg-transparent border-b border-slate-800 text-white py-2 focus:border-gold-500 focus:outline-none transition-all font-serif text-base"
                 />
@@ -55,6 +77,8 @@ export const Contact: React.FC<ContactProps> = ({ initialMessage = '' }) => {
                   type="email" 
                   id="email" 
                   required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   autoComplete="email"
                   className="w-full bg-transparent border-b border-slate-800 text-white py-2 focus:border-gold-500 focus:outline-none transition-all font-serif text-base"
                 />
@@ -65,6 +89,8 @@ export const Contact: React.FC<ContactProps> = ({ initialMessage = '' }) => {
                 <input 
                   type="tel" 
                   id="phone" 
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
                   autoComplete="tel"
                   className="w-full bg-transparent border-b border-slate-800 text-white py-2 focus:border-gold-500 focus:outline-none transition-all font-serif text-base"
                 />
@@ -84,18 +110,28 @@ export const Contact: React.FC<ContactProps> = ({ initialMessage = '' }) => {
 
               <button 
                 type="submit" 
-                className="flex items-center gap-2 text-white uppercase tracking-[0.4em] text-[10px] font-bold group pt-4"
+                disabled={isSubmitting}
+                className="flex items-center gap-2 text-white uppercase tracking-[0.4em] text-[10px] font-bold group pt-4 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span>ABSENDEN</span>
-                <ArrowUpRight size={16} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform text-gold-500" />
+                {isSubmitting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin text-gold-500" />
+                    <span>SENDET...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>ABSENDEN</span>
+                    <ArrowUpRight size={16} className="group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform text-gold-500" />
+                  </>
+                )}
               </button>
             </form>
           </div>
 
-          {/* Spacer column - Schafft Platz in der Mitte */}
+          {/* Spacer column */}
           <div className="hidden lg:block lg:col-span-2"></div>
 
-          {/* Info Side - Rechtsbündig verankert mit vertikaler Trennlinie */}
+          {/* Info Side */}
           <div className="lg:col-span-4 lg:border-l lg:border-slate-800 lg:pl-12 flex flex-col justify-start space-y-12">
             
             {/* Kontakt Section */}

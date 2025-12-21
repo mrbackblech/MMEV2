@@ -1,97 +1,7 @@
 import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
-import { ChevronLeft, ChevronRight, X, MapPin, Calendar, CheckCircle2 } from 'lucide-react';
-import { GalleryImage } from '../types';
-
-const IMAGES: GalleryImage[] = [
-  { 
-    id: 1, 
-    url: 'https://picsum.photos/1600/900?random=10', 
-    title: 'Golden Gala Night', 
-    category: 'Gala',
-    location: 'Palais Ferstel, Wien',
-    date: '14. Oktober 2023',
-    description: 'Ein Abend voller Glanz und Glamour. Für dieses exklusive Gala-Dinner verwandelten wir den historischen Ballsaal in ein goldenes Lichtermeer. Mit einem 5-Gänge-Menü von Sternekoch Markus Mraz und einer begleitenden Jazz-Bigband wurde der Abend zu einem unvergesslichen Erlebnis für alle Sinne.',
-    highlights: ['5-Gänge Sterne-Menü', 'Live Jazz-Bigband', 'Maßgeschneidertes Lichtdesign', '300 VIP Gäste'],
-    additionalImages: [
-      'https://picsum.photos/1600/900?random=11',
-      'https://picsum.photos/1600/900?random=12',
-      'https://picsum.photos/1600/900?random=13',
-      'https://picsum.photos/1600/900?random=14'
-    ]
-  },
-  { 
-    id: 2, 
-    url: 'https://picsum.photos/1600/900?random=20', 
-    title: 'Modern Art Vernissage', 
-    category: 'Kunst',
-    location: 'Albertina Modern',
-    date: '02. Mai 2023',
-    description: 'Minimalismus trifft auf Expressionismus. Die Inszenierung dieser Ausstellung erforderte höchste Präzision in der Lichttechnik, um die Werke perfekt zur Geltung zu bringen.',
-    highlights: ['Präzisions-Spotlights', 'Edible Art Catering', 'Artist Talks', 'Exklusive Preview'],
-    additionalImages: [
-      'https://picsum.photos/1600/900?random=21',
-      'https://picsum.photos/1600/900?random=22',
-      'https://picsum.photos/1600/900?random=23'
-    ]
-  },
-  { 
-    id: 3, 
-    url: 'https://picsum.photos/1600/900?random=30', 
-    title: 'Rooftop Summer Vibe', 
-    category: 'Event',
-    location: 'The Ritz-Carlton, Vienna',
-    date: '21. Juni 2023',
-    description: 'Der längste Tag des Jahres, gefeiert über den Dächern der Stadt. Eine Symbiose aus entspannten Deep-House Klängen und frischen Signature-Cocktails.',
-    highlights: ['Signature Cocktails', 'Urban Jungle Dekor', 'Live DJ Set', 'Sunset View'],
-    additionalImages: [
-      'https://picsum.photos/1600/900?random=31',
-      'https://picsum.photos/1600/900?random=32'
-    ]
-  },
-  { 
-    id: 4, 
-    url: 'https://picsum.photos/1600/900?random=40', 
-    title: 'Royal Wedding Dream', 
-    category: 'Hochzeit',
-    location: 'Schloss Belvedere',
-    date: '09. September 2023',
-    description: 'Eine Märchenhochzeit im Herzen Wiens. Von der Trauung im barocken Garten bis zum Dinner im Marmorsaal war jedes Detail minutiös geplant.',
-    highlights: ['Barocke Location', 'Klassisches Orchester', 'Florales Designkonzept', 'Kutschenfahrt'],
-    additionalImages: [
-      'https://picsum.photos/1600/900?random=41',
-      'https://picsum.photos/1600/900?random=42'
-    ]
-  },
-  { 
-    id: 5, 
-    url: 'https://picsum.photos/1600/900?random=50', 
-    title: 'Tech Innovation Summit', 
-    category: 'Corporate',
-    location: 'Sofiensäle',
-    date: '15. November 2023',
-    description: 'Zukunft trifft Tradition. Für diesen Technologie-Kongress haben wir die historischen Sofiensäle mit modernster LED-Wand-Technik ausgestattet.',
-    highlights: ['360° LED Installation', 'Interactive Booths', 'Keynote Stage', 'Networking Lounge'],
-    additionalImages: [
-      'https://picsum.photos/1600/900?random=51'
-    ]
-  },
-  { 
-    id: 6, 
-    url: 'https://picsum.photos/1600/900?random=60', 
-    title: 'Secret Garden Dinner', 
-    category: 'Genuss',
-    location: 'Palmenhaus Schönbrunn',
-    date: '10. Juli 2023',
-    description: 'Ein verstecktes Paradies inmitten der Stadt. Lange Tafeln unter exotischen Palmen, beleuchtet von tausenden hängenden Kerzen.',
-    highlights: ['Botanisches Menü', 'Hängende Kerzen', 'Harfen-Begleitung', 'Private Atmosphere'],
-    additionalImages: [
-      'https://picsum.photos/1600/900?random=61',
-      'https://picsum.photos/1600/900?random=62'
-    ]
-  }
-];
-
-const DISPLAY_IMAGES = [...IMAGES, ...IMAGES, ...IMAGES];
+import { ChevronLeft, ChevronRight, X, MapPin, Calendar, CheckCircle2, RefreshCcw } from 'lucide-react';
+import { GalleryImage, LoadingState } from '../types';
+import { fetchERPNextProjects } from '../services/projectService';
 
 interface GalleryProps {
   onInquire?: (projectTitle: string) => void;
@@ -99,14 +9,41 @@ interface GalleryProps {
 
 export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const preciseScrollLeft = useRef<number>(0); // Speichert den exakten Float-Wert
+  const preciseScrollLeft = useRef<number>(0);
+  const [projects, setProjects] = useState<GalleryImage[]>([]);
+  const [displayImages, setDisplayImages] = useState<GalleryImage[]>([]);
+  const [status, setStatus] = useState<LoadingState>(LoadingState.LOADING);
+  
   const [selectedProjectIndex, setSelectedProjectIndex] = useState<number | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const animationFrameId = useRef<number>(0);
   const isNavigating = useRef(false);
 
-  const selectedImage = selectedProjectIndex !== null ? DISPLAY_IMAGES[selectedProjectIndex] : null;
+  const selectedImage = selectedProjectIndex !== null ? displayImages[selectedProjectIndex] : null;
+
+  // Lade Projekte von ERPNext
+  useEffect(() => {
+    const loadData = async () => {
+      setStatus(LoadingState.LOADING);
+      try {
+        const data = await fetchERPNextProjects();
+        // Fallback falls die API leer ist oder nur Platzhalter kommen
+        if (data.length === 0) {
+           // Wir könnten hier statische Fallbacks nutzen, falls gewünscht
+           setStatus(LoadingState.ERROR);
+           return;
+        }
+        setProjects(data);
+        // Wir verdreifachen das Set für den nahtlosen Loop
+        setDisplayImages([...data, ...data, ...data]);
+        setStatus(LoadingState.SUCCESS);
+      } catch (err) {
+        setStatus(LoadingState.ERROR);
+      }
+    };
+    loadData();
+  }, []);
 
   useLayoutEffect(() => {
     const checkMobile = () => setIsMobile(window.innerWidth < 768);
@@ -115,30 +52,27 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Karussell-Initialisierung
+  // Karussell-Initialisierung nach Daten-Load
   useEffect(() => {
-    const container = scrollRef.current;
-    if (container) {
+    if (status === LoadingState.SUCCESS && scrollRef.current) {
       const initScroll = () => {
+        const container = scrollRef.current;
+        if (!container) return;
         const singleSetWidth = container.scrollWidth / 3;
         container.scrollLeft = singleSetWidth;
         preciseScrollLeft.current = singleSetWidth;
       };
-      
-      const timer = setTimeout(initScroll, 100);
-      return () => clearTimeout(timer);
+      setTimeout(initScroll, 200);
     }
-  }, []);
+  }, [status]);
 
   // Infinite Scroll Loop
   useEffect(() => {
     const container = scrollRef.current;
-    if (!container) return;
+    if (!container || status !== LoadingState.SUCCESS) return;
 
     const animate = () => {
       if (!container) return;
-
-      // Wenn manuell navigiert wird, nur den Frame am Leben halten aber nichts tun
       if (isNavigating.current) {
         preciseScrollLeft.current = container.scrollLeft;
         animationFrameId.current = requestAnimationFrame(animate);
@@ -148,19 +82,16 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
       const totalWidth = container.scrollWidth;
       const oneSetWidth = totalWidth / 3;
 
-      // Jump Logic
       if (preciseScrollLeft.current >= 2 * oneSetWidth) {
         preciseScrollLeft.current -= oneSetWidth;
       } else if (preciseScrollLeft.current <= 0) {
         preciseScrollLeft.current += oneSetWidth;
       }
 
-      // Auto-Rotation Increment
       if (!isPaused && selectedProjectIndex === null) {
-        preciseScrollLeft.current += 1.0; // Ganze Zahl oder stabiler Float (1.0 ist sicher)
+        preciseScrollLeft.current += 1.0;
         container.scrollLeft = preciseScrollLeft.current;
       } else {
-        // Wenn pausiert, synchronisieren wir den präzisen Wert mit dem aktuellen Stand (falls User scrollt)
         preciseScrollLeft.current = container.scrollLeft;
       }
 
@@ -169,7 +100,7 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
 
     animationFrameId.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(animationFrameId.current);
-  }, [isPaused, selectedProjectIndex]);
+  }, [isPaused, selectedProjectIndex, status]);
 
   const calculateCenterPosition = (index: number) => {
     if (!scrollRef.current) return 0;
@@ -180,17 +111,13 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
     const containerRect = container.getBoundingClientRect();
     const itemRect = element.getBoundingClientRect();
     const currentScroll = container.scrollLeft;
-    
     const itemCenterAbsolute = (itemRect.left - containerRect.left) + currentScroll + (itemRect.width / 2);
-    const containerCenter = containerRect.width / 2;
-    
-    return itemCenterAbsolute - containerCenter;
+    return itemCenterAbsolute - (containerRect.width / 2);
   };
 
   const scrollCarouselTo = (target: number, duration: number = 600) => {
     const container = scrollRef.current;
     if (!container) return;
-    
     isNavigating.current = true;
     const start = container.scrollLeft;
     const distance = target - start;
@@ -199,17 +126,12 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
     const step = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      const ease = 1 - Math.pow(1 - progress, 3); // Cubic Out Easing
-      
+      const ease = 1 - Math.pow(1 - progress, 3);
       const nextVal = start + (distance * ease);
       container.scrollLeft = nextVal;
       preciseScrollLeft.current = nextVal;
-
-      if (progress < 1) {
-        requestAnimationFrame(step);
-      } else {
-        isNavigating.current = false;
-      }
+      if (progress < 1) requestAnimationFrame(step);
+      else isNavigating.current = false;
     };
     requestAnimationFrame(step);
   };
@@ -218,7 +140,6 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
     setIsPaused(true);
     const targetPos = calculateCenterPosition(index);
     scrollCarouselTo(targetPos, 600);
-
     setTimeout(() => {
         setSelectedProjectIndex(index);
         document.body.style.overflow = 'hidden';
@@ -234,15 +155,12 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
   const navigateProject = (direction: 'prev' | 'next') => {
     if (selectedProjectIndex === null) return;
     const newIndex = direction === 'next' ? selectedProjectIndex + 1 : selectedProjectIndex - 1;
-    if (newIndex >= 0 && newIndex < DISPLAY_IMAGES.length) {
-        setSelectedProjectIndex(newIndex);
-    }
+    if (newIndex >= 0 && newIndex < displayImages.length) setSelectedProjectIndex(newIndex);
   };
 
   const handleScrollNav = (direction: 'prev' | 'next') => {
      if (!scrollRef.current) return;
      setIsPaused(true);
-     
      const container = scrollRef.current;
      const containerRect = container.getBoundingClientRect();
      const containerCenter = containerRect.width / 2;
@@ -253,17 +171,12 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
         const rect = (child as HTMLElement).getBoundingClientRect();
         const childCenter = (rect.left - containerRect.left) + (rect.width / 2);
         const diff = Math.abs(childCenter - containerCenter);
-        if (diff < minDiff) {
-            minDiff = diff;
-            currentIndex = index;
-        }
+        if (diff < minDiff) { minDiff = diff; currentIndex = index; }
      });
 
      let targetIndex = direction === 'next' ? currentIndex + 1 : currentIndex - 1;
-     targetIndex = Math.max(0, Math.min(targetIndex, DISPLAY_IMAGES.length - 1));
-     
-     const targetPos = calculateCenterPosition(targetIndex);
-     scrollCarouselTo(targetPos, 500);
+     targetIndex = Math.max(0, Math.min(targetIndex, displayImages.length - 1));
+     scrollCarouselTo(calculateCenterPosition(targetIndex), 500);
   };
   
   const handleKeyboardNav = (e: KeyboardEvent) => {
@@ -280,18 +193,37 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
   useEffect(() => {
     window.addEventListener('keydown', handleKeyboardNav);
     return () => window.removeEventListener('keydown', handleKeyboardNav);
-  }, [selectedProjectIndex]);
+  }, [selectedProjectIndex, displayImages]);
 
   const handleInquireClick = () => {
     if (selectedImage && onInquire) {
         onInquire(selectedImage.title);
         closeModal();
         setTimeout(() => {
-             const contactSection = document.getElementById('contact');
-             if (contactSection) contactSection.scrollIntoView({ behavior: 'smooth' });
+             document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' });
         }, 600);
     }
   };
+
+  // Loading UI
+  if (status === LoadingState.LOADING) {
+    return (
+      <div className="w-full py-24 bg-slate-900 border-t border-slate-800 flex flex-col items-center">
+        <div className="animate-spin text-gold-500 mb-6"><RefreshCcw size={40} /></div>
+        <p className="text-slate-400 font-serif tracking-widest uppercase text-sm">Synchronisiere Projekte...</p>
+      </div>
+    );
+  }
+
+  // Error UI
+  if (status === LoadingState.ERROR) {
+    return (
+      <div className="w-full py-24 bg-slate-900 border-t border-slate-800 text-center">
+        <p className="text-red-400 mb-4">Projekte konnten nicht geladen werden.</p>
+        <button onClick={() => window.location.reload()} className="text-gold-500 underline text-sm uppercase tracking-widest">Erneut versuchen</button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full pt-12 pb-4 md:py-20 bg-slate-900 border-t border-slate-800">
@@ -302,13 +234,12 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
         </h2>
         <div className="w-24 h-1 bg-gold-500 mx-auto mb-6"></div>
         <p className="text-slate-400 text-lg max-w-2xl mx-auto">
-          Wählen Sie ein Projekt für Details.
+          Aktuelle Event-Kultur direkt aus unserem ERP-System.
         </p>
       </div>
 
       <div className="relative w-full group/carousel overflow-hidden">
         
-        {/* Navigations-Buttons (Karussell) */}
         <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-between px-4 md:px-12">
            <button 
               className="pointer-events-auto bg-slate-900/50 hover:bg-gold-500 text-white p-3 rounded-full backdrop-blur-sm border border-slate-600 transition-all opacity-0 group-hover/carousel:opacity-100"
@@ -324,7 +255,6 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
            </button>
         </div>
 
-        {/* Karussell-Container */}
         <div 
           ref={scrollRef}
           className={`
@@ -338,13 +268,12 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
           onMouseLeave={() => !selectedProjectIndex && setIsPaused(false)}
           onTouchStart={() => setIsPaused(true)}
           onScroll={() => {
-            // Falls der User manuell scrollt, synchronisieren wir den präzisen Ref
             if (!isNavigating.current && scrollRef.current) {
                preciseScrollLeft.current = scrollRef.current.scrollLeft;
             }
           }}
         >
-          {DISPLAY_IMAGES.map((img, index) => (
+          {displayImages.map((img, index) => (
             <div 
               key={`${img.id}-${index}`}
               onClick={() => handleImageClick(index)}
@@ -377,7 +306,6 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
         </div>
       </div>
 
-      {/* Fullscreen Immersive Modal */}
       {selectedProjectIndex !== null && selectedImage && (
         <div className={`fixed inset-0 z-50 bg-slate-900 overflow-y-auto animate-[fadeIn_0.4s_ease-out]`}>
             <div className="fixed top-0 left-0 w-full z-[60] p-6 flex justify-between items-start pointer-events-none">
@@ -409,11 +337,11 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
             <div className="container mx-auto px-6 md:px-16 py-16 md:py-24 max-w-7xl">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 mb-24">
                     <div className="lg:col-span-8">
-                         <h3 className="text-gold-500 font-serif text-2xl mb-6">Das Konzept</h3>
-                         <p className="text-lg md:text-xl text-slate-300 leading-relaxed font-light">{selectedImage.description}</p>
+                         <h3 className="text-gold-500 font-serif text-2xl mb-6">Projekt-Details</h3>
+                         <p className="text-lg md:text-xl text-slate-300 leading-relaxed font-light whitespace-pre-line">{selectedImage.description}</p>
                     </div>
                     <div className="lg:col-span-4 bg-slate-800/30 p-8 rounded-sm border border-slate-800 h-fit">
-                        <h3 className="text-white font-serif text-xl mb-6">Event Highlights</h3>
+                        <h3 className="text-white font-serif text-xl mb-6">Zusatzinfos</h3>
                         <div className="space-y-4">
                             {selectedImage.highlights?.map((h, i) => (
                                 <div key={i} className="flex items-start gap-3">
@@ -425,22 +353,9 @@ export const Gallery: React.FC<GalleryProps> = ({ onInquire }) => {
                     </div>
                 </div>
 
-                {selectedImage.additionalImages && (
-                    <div className="space-y-12 md:space-y-24 mb-24">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-                            {selectedImage.additionalImages.map((src, i) => (
-                                <div key={i} className={`relative rounded-sm overflow-hidden shadow-2xl border border-slate-800 group ${(i + 1) % 3 === 0 ? 'md:col-span-2 aspect-[21/9]' : 'aspect-[4/3]'}`}>
-                                    <img src={src} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" alt={`Detail impression ${i+1}`} />
-                                    <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors"></div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
                 <div className="text-center pb-12 pt-12 border-t border-slate-800">
-                    <h3 className="text-3xl font-serif text-white mb-8">Interesse geweckt?</h3>
-                    <button onClick={handleInquireClick} className="bg-gold-600 hover:bg-gold-500 text-white font-bold py-5 px-16 rounded-sm uppercase tracking-widest text-sm shadow-[0_0_20px_rgba(197,160,40,0.3)] hover:scale-105 transition-all">Dieses Projekt Anfragen</button>
+                    <h3 className="text-3xl font-serif text-white mb-8">Interesse an diesem Projekt?</h3>
+                    <button onClick={handleInquireClick} className="bg-gold-600 hover:bg-gold-500 text-white font-bold py-5 px-16 rounded-sm uppercase tracking-widest text-sm shadow-[0_0_20px_rgba(197,160,40,0.3)] hover:scale-105 transition-all">Anfrage zu "{selectedImage.title}" senden</button>
                 </div>
             </div>
         </div>
